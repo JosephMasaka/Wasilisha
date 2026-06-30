@@ -48,6 +48,18 @@ export default async function DashboardLayout({
                 >
                   Templates
                 </Link>
+                <Link
+                  href="/dashboard/subscription"
+                  className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  Subscription
+                </Link>
+                <Link
+                  href="/dashboard/usage"
+                  className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium"
+                >
+                  Usage
+                </Link>
               </div>
             </div>
             <div className="flex items-center space-x-4">
