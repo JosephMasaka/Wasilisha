@@ -24,6 +24,7 @@ model Company {
   campaigns            Campaign[]
   templates            Template[]
   walletTransactions   WalletTransaction[]
+  fallbackRules        FallbackRule[]
 
   @@index([email])
 }
@@ -110,34 +111,37 @@ model Template {
 }
 
 model Campaign {
-  id          String    @id @default(uuid())
-  companyId   String
-  company     Company   @relation(fields: [companyId], references: [id])
-  channel     String
-  name        String
-  templateId  String?
-  status      String
-  scheduledAt DateTime?
-  createdAt   DateTime  @default(now())
-  messages    Message[]
+  id             String             @id @default(uuid())
+  companyId      String
+  company        Company            @relation(fields: [companyId], references: [id])
+  channel        String
+  name           String
+  templateId     String?
+  status         String
+  scheduledAt    DateTime?
+  fallbackRuleId String?
+  createdAt      DateTime           @default(now())
+  messages       Message[]
+  fallbacks      CampaignFallback[]
 
   @@index([companyId])
   @@index([status])
 }
 
 model Message {
-  id                String    @id @default(uuid())
+  id                String            @id @default(uuid())
   campaignId        String
-  campaign          Campaign  @relation(fields: [campaignId], references: [id])
+  campaign          Campaign          @relation(fields: [campaignId], references: [id])
   contactId         String
   channel           String
   status            String
   providerMessageId String?
-  costKes           Decimal   @db.Decimal(10, 4)
+  costKes           Decimal           @db.Decimal(10, 4)
   errorMessage      String?
   sentAt            DateTime?
   deliveredAt       DateTime?
-  createdAt         DateTime  @default(now())
+  createdAt         DateTime          @default(now())
+  fallback          CampaignFallback?
 
   @@index([campaignId])
   @@index([status])
@@ -153,3 +157,47 @@ model ProviderWebhookLog {
   @@index([source])
   @@index([createdAt])
 }
+
+// Add these models to your existing schema.prisma
+
+model FallbackRule {
+  id                String   @id @default(uuid())
+  companyId         String
+  company           Company  @relation(fields: [companyId], references: [id])
+  name              String
+  primaryChannel    String   // sms | email | whatsapp
+  fallbackChannel   String   // sms | email | whatsapp
+  triggerCondition  String   // undelivered | unread | bounced
+  delayMinutes      Int      // Wait time before fallback
+  enabled           Boolean  @default(true)
+  createdAt         DateTime @default(now())
+
+  @@index([companyId])
+}
+
+model CampaignFallback {
+  id              String    @id @default(uuid())
+  campaignId      String
+  campaign        Campaign  @relation(fields: [campaignId], references: [id])
+  messageId       String    @unique
+  message         Message   @relation(fields: [messageId], references: [id])
+  fallbackRuleId  String
+  status          String    // pending | triggered | completed | cancelled
+  triggerAt       DateTime  // When to check and trigger fallback
+  triggeredAt     DateTime?
+  fallbackMessageId String?
+  createdAt       DateTime  @default(now())
+
+  @@index([campaignId])
+  @@index([status, triggerAt])
+}
+
+// Add to existing Campaign model:
+// fallbackRuleId   String?
+// fallbacks        CampaignFallback[]
+
+// Add to existing Message model:
+// fallback         CampaignFallback?
+
+// Add to existing Company model:
+// fallbackRules    FallbackRule[]
