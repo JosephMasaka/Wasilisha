@@ -1,5 +1,19 @@
 import type { Metadata } from "next";
+import { Fraunces, Inter } from "next/font/google";
 import "./globals.css";
+
+const fraunces = Fraunces({
+  subsets: ["latin"],
+  variable: "--font-fraunces",
+  weight: ["500", "600"],
+  style: ["normal", "italic"],
+});
+
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-inter",
+});
+
 
 export const metadata: Metadata = {
   title: "Wasilisha - Reach Every Channel. One Platform.",
@@ -13,7 +27,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased {`${fraunces.variable} ${inter.variable} font-sans`}">{children}</body>
     </html>
   );
 }

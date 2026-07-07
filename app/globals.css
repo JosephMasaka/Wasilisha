@@ -3,18 +3,58 @@
 @tailwind utilities;
 
 :root {
-  --foreground: #171717;
-  --background: #ffffff;
+  --bg: #0b0a14;
+  --bg-elevated: #100e1c;
+  --surface: #171325;
+  --surface-2: #1e1930;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.18);
+
+  --primary: #8b5cf6;
+  --primary-dim: #6d3eef;
+  --primary-glow: rgba(139, 92, 246, 0.35);
+  --warm: #ff8a65;
+
+  --sms: #fbbf24;
+  --email: #60a5fa;
+  --whatsapp: #34d399;
+
+  --text: #f5f3fa;
+  --text-muted: #a29cc4;
+  --text-faint: #6d6790;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --foreground: #ededed;
-    --background: #0a0a0a;
+.font-display {
+  font-family: var(--font-fraunces), Georgia, serif;
+}
+
+@keyframes core-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 var(--primary-glow), 0 0 24px 6px var(--primary-glow);
+  }
+  50% {
+    box-shadow: 0 0 0 10px rgba(139, 92, 246, 0), 0 0 44px 14px var(--primary-glow);
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
+@keyframes spin-orbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(14px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-up {
+  animation: fade-up 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
 }
