@@ -1,0 +1,6 @@
+phone,email,whatsappId,tags
+0712345678,john@example.com,254712345678,customer;vip
+0723456789,jane@example.com,,customer;nairobi
+0734567890,bob@example.com,254734567890,customer
+0745678901,alice@example.com,,vip;mombasa
+0756789012,charlie@example.com,254756789012,customer
