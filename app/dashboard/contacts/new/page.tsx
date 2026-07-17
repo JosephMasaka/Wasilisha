@@ -48,110 +48,139 @@ export default function NewContactPage() {
     }
   };
 
+  const tagList = formData.tags
+    ? formData.tags.split(",").map((t) => t.trim()).filter(Boolean)
+    : [];
+
+  const inputStyle = {
+    background: "var(--surface-2)",
+    borderColor: "var(--border)",
+    color: "var(--text)",
+  };
+
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-6">
         <Link
           href="/dashboard/contacts"
-          className="text-primary-600 hover:text-primary-700 text-sm font-medium"
+          className="inline-flex items-center gap-1.5 text-sm font-medium hover:opacity-80 transition"
+          style={{ color: "var(--primary)" }}
         >
-          ← Back to Contacts
+          <i className="bi bi-arrow-left" />
+          Back to contacts
         </Link>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
-          Add New Contact
+      <div className="rounded-2xl border p-8" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+        <h1 className="font-display text-2xl mb-2" style={{ color: "var(--text)" }}>
+          Add new contact
         </h1>
-        <p className="text-gray-600 mb-6">
+        <p className="mb-6" style={{ color: "var(--text-muted)" }}>
           Manually add a single contact to your list
         </p>
 
         {error && (
-          <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-4">
+          <div
+            className="text-sm p-4 rounded-lg mb-5 border"
+            style={{ background: "rgba(239,68,68,0.08)", borderColor: "rgba(239,68,68,0.25)", color: "#fca5a5" }}
+          >
             {error}
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Phone Number *
+            <label className="flex items-center gap-2 text-xs font-medium mb-1.5" style={{ color: "var(--text-muted)" }}>
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--sms)" }} />
+              Phone number *
             </label>
             <input
               type="tel"
               required
               value={formData.phone}
-              onChange={(e) =>
-                setFormData({ ...formData, phone: e.target.value })
-              }
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+              className="w-full px-4 py-2.5 rounded-lg border text-sm outline-none focus:border-[var(--primary)] transition"
+              style={inputStyle}
               placeholder="0712345678 or +254712345678"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs mt-1.5" style={{ color: "var(--text-faint)" }}>
               Kenyan phone number format
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email (Optional)
+            <label className="flex items-center gap-2 text-xs font-medium mb-1.5" style={{ color: "var(--text-muted)" }}>
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--email)" }} />
+              Email (optional)
             </label>
             <input
               type="email"
               value={formData.email}
-              onChange={(e) =>
-                setFormData({ ...formData, email: e.target.value })
-              }
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+              className="w-full px-4 py-2.5 rounded-lg border text-sm outline-none focus:border-[var(--primary)] transition"
+              style={inputStyle}
               placeholder="contact@example.com"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              WhatsApp ID (Optional)
+            <label className="flex items-center gap-2 text-xs font-medium mb-1.5" style={{ color: "var(--text-muted)" }}>
+              <span className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--whatsapp)" }} />
+              WhatsApp ID (optional)
             </label>
             <input
               type="text"
               value={formData.whatsappId}
-              onChange={(e) =>
-                setFormData({ ...formData, whatsappId: e.target.value })
-              }
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              onChange={(e) => setFormData({ ...formData, whatsappId: e.target.value })}
+              className="w-full px-4 py-2.5 rounded-lg border text-sm outline-none focus:border-[var(--primary)] transition"
+              style={inputStyle}
               placeholder="254712345678"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Tags (Optional)
+            <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-muted)" }}>
+              Tags (optional)
             </label>
             <input
               type="text"
               value={formData.tags}
-              onChange={(e) =>
-                setFormData({ ...formData, tags: e.target.value })
-              }
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent"
+              onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+              className="w-full px-4 py-2.5 rounded-lg border text-sm outline-none focus:border-[var(--primary)] transition"
+              style={inputStyle}
               placeholder="customer, vip, lagos"
             />
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-xs mt-1.5 mb-2" style={{ color: "var(--text-faint)" }}>
               Separate tags with commas
             </p>
+            {tagList.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {tagList.map((tag) => (
+                  <span
+                    key={tag}
+                    className="px-2.5 py-1 rounded-full text-xs font-medium"
+                    style={{ background: "var(--surface-2)", color: "var(--primary)", border: "1px solid var(--border)" }}
+                  >
+                    {tag}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div className="flex space-x-3 pt-4">
+          <div className="flex gap-3 pt-2">
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex-1 py-3 rounded-lg font-medium text-sm transition hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
+              style={{ background: "linear-gradient(135deg, var(--warm), var(--primary))", color: "white" }}
             >
-              {loading ? "Creating..." : "Create Contact"}
+              {loading ? "Creating…" : "Create contact"}
             </button>
             <Link
               href="/dashboard/contacts"
-              className="px-6 py-3 border border-gray-300 rounded-lg font-semibold hover:bg-gray-50 transition text-center"
+              className="px-6 py-3 rounded-lg font-medium text-sm border transition hover:border-white/20 text-center"
+              style={{ borderColor: "var(--border-strong)", color: "var(--text)" }}
             >
               Cancel
             </Link>
