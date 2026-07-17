@@ -16,9 +16,9 @@ A multi-tenant SaaS platform for sending bulk SMS, email, and WhatsApp messages 
 - **Email:** Resend
 - **WhatsApp:** Meta Business Cloud API
 
-## Current Phase: Phase 1 - Foundation ✅
+## Current Phase: Phase 5 - Analytics & Reliability ✅
 
-### Completed Features
+### Phase 1 - Foundation ✅
 - Next.js 15 project setup with TypeScript
 - Prisma schema for all core models
 - User authentication (signup/signin)
@@ -27,20 +27,59 @@ A multi-tenant SaaS platform for sending bulk SMS, email, and WhatsApp messages 
 - Multi-tenancy architecture (company-scoped data)
 - Webhook handling for payment confirmations
 
-### Coming Next (Phase 2)
-- Contact management + CSV upload
-- SMS campaign creation and sending
-- BullMQ queue setup + worker process
+### Phase 2 - SMS Campaigns ✅
+- Contact management with CSV upload & phone normalization
+- SMS template builder with variables
+- Campaign creation with cost estimation
+- BullMQ queue + standalone worker process
 - Africa's Talking SMS integration
-- Message status tracking
+- Delivery status tracking via webhooks
+- Atomic wallet debits with row locking
+- Real-time campaign progress monitoring
+
+### Phase 3 - Multi-Channel Expansion ✅
+- Email campaigns via Resend
+- WhatsApp campaigns via Meta Business API
+- Provider adapter abstraction layer
+- HTML email support with subject customization
+- Multi-channel worker with unified billing
+- Channel-specific webhook handlers
+- Per-channel cost calculation
+
+### Phase 4 - Monetization Polish ✅
+- Subscription plans (Starter/Growth/Scale)
+- Included credits per channel
+- Discounted overage rates
+- Usage dashboard with charts
+- Low-balance alerts
+- Plan upgrade/downgrade
+- Cancel anytime
+
+### Phase 5 - Analytics & Reliability ✅
+- Campaign analytics dashboard
+- Delivery rate tracking
+- Retry logic (up to 3 attempts)
+- Failed messages monitor
+- Dead letter queue
+- Success rate visualization
+
+### Coming Next (Phase 6)
+- Cross-channel automation
+- Fallback rules (WhatsApp → SMS)
+- Multi-channel campaigns
+- Conditional delivery logic
+- A/B testing across channels
 
 ## Setup Instructions
 
 ### Prerequisites
 - Node.js 18+ and npm/yarn
 - PostgreSQL database
-- Redis (for BullMQ queue)
+- Redis (for BullMQ queue) - **Required for Phase 2+**
 - Paystack account (test mode for development)
+- Africa's Talking account (sandbox mode for testing)
+- Resend account (for email campaigns)
+- Meta Business account (for WhatsApp campaigns)
 
 ### Local Development
 
@@ -82,12 +121,29 @@ A multi-tenant SaaS platform for sending bulk SMS, email, and WhatsApp messages 
    npx prisma generate
    ```
 
-4. **Run the development server:**
+4. **Start Redis** (required for Phase 2 campaigns):
+   ```bash
+   # macOS
+   brew services start redis
+   
+   # Linux
+   sudo systemctl start redis
+   
+   # Windows: Use WSL or download from redis.io
+   ```
+
+5. **Run the development server:**
    ```bash
    npm run dev
    ```
 
-5. **Access the application:**
+6. **Start the worker** (required for sending campaigns):
+   In a separate terminal:
+   ```bash
+   npm run worker
+   ```
+
+7. **Access the application:**
    Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ### Database Management
@@ -156,7 +212,7 @@ Update these in Vercel project settings:
 
 ### Important Notes
 
-⚠️ **Worker Process:** The BullMQ worker (for processing campaigns) cannot run on Vercel serverless functions. In Phase 2, you'll need to deploy the worker separately to Railway, Render, or EC2.
+⚠️ **Worker Process:** The BullMQ worker (for processing campaigns) cannot run on Vercel serverless functions. Deploy the worker separately to Railway, Render, or EC2. See `PHASE-2-COMPLETE.md` for deployment instructions.
 
 ⚠️ **Webhook Testing:** Use ngrok or Vercel preview deployments to test webhooks locally:
 ```bash
@@ -218,12 +274,65 @@ const contacts = await prisma.contact.findMany({
 
 Follow the phases in `wasilisha-dev-spec.md`:
 
-- **Phase 1:** Foundation (COMPLETE)
-- **Phase 2:** SMS channel + queue system
-- **Phase 3:** Email + WhatsApp channels
-- **Phase 4:** Subscription plans + monetization
-- **Phase 5:** Analytics + reliability
-- **Phase 6:** Cross-channel automation
+- **Phase 1:** Foundation ✅ (COMPLETE)
+- **Phase 2:** SMS channel + queue system ✅ (COMPLETE)
+- **Phase 3:** Email + WhatsApp channels ✅ (COMPLETE)
+- **Phase 4:** Subscription plans + monetization ✅ (COMPLETE)
+- **Phase 5:** Analytics + reliability ✅ (COMPLETE)
+- **Phase 6:** Cross-channel automation (NEXT - The Differentiator)
+
+**Documentation:**
+- **Phase 2:** `PHASE-2-COMPLETE.md` - SMS campaigns
+- **Phase 3:** `PHASE-3-COMPLETE.md` - Email & WhatsApp
+- **Phase 4:** `PHASE-4-COMPLETE.md` - Subscription & usage tracking
+- **Phase 5:** `PHASE-5-COMPLETE.md` - Analytics & reliability
+
+## Troubleshooting
+
+### Dashboard loading indefinitely
+
+Run the setup checker to diagnose issues:
+```bash
+npm run check
+```
+
+Common causes:
+1. **Database not connected:** Verify `DATABASE_URL` in `.env`
+2. **Prisma client not generated:** Run `npx prisma generate`
+3. **Missing AUTH_SECRET:** Add both `NEXTAUTH_SECRET` and `AUTH_SECRET` to `.env`
+4. **Database tables not created:** Run `npm run db:push`
+
+### Quick fixes:
+
+```bash
+# Regenerate Prisma client
+npx prisma generate
+
+# Push schema to database
+npx prisma db push
+
+# Check if PostgreSQL is running (Windows with XAMPP)
+# Start XAMPP Control Panel and start PostgreSQL
+
+# Test database connection
+npx prisma studio
+```
+
+### Auth issues
+
+If you're getting redirected to signin repeatedly:
+1. Ensure `AUTH_SECRET` is set in `.env` (required for NextAuth v5)
+2. Clear browser cookies and try again
+3. Check browser console for errors
+
+### Missing environment variables
+
+Copy `.env.example` to `.env`:
+```bash
+cp .env.example .env
+```
+
+Then edit `.env` with your actual credentials.
 
 ## Support
 
