@@ -2,6 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import RetryButton from "@/components/campaigns/RetryButton";
 
 export default async function CampaignDetailPage({
   params,
@@ -38,10 +39,14 @@ export default async function CampaignDetailPage({
   const queuedMessages = campaign.messages.filter((m) => m.status === "queued").length;
   const sentMessages = campaign.messages.filter((m) => m.status === "sent" || m.status === "delivered").length;
   const failedMessages = campaign.messages.filter((m) => m.status === "failed").length;
+  const deliveredMessages = campaign.messages.filter((m) => m.status === "delivered").length;
   const totalCost = campaign.messages.reduce(
     (sum, m) => sum + parseFloat(m.costKes.toString()),
     0
   );
+
+  const deliveryRate = totalMessages > 0 ? (deliveredMessages / totalMessages) * 100 : 0;
+  const failureRate = totalMessages > 0 ? (failedMessages / totalMessages) * 100 : 0;
 
   const statusColors = {
     queued: "bg-gray-100 text-gray-800",
@@ -76,9 +81,10 @@ export default async function CampaignDetailPage({
               </span>
             </div>
           </div>
+          {failedMessages > 0 && <RetryButton campaignId={campaign.id} />}
         </div>
 
-        <div className="grid md:grid-cols-5 gap-4 mt-6">
+        <div className="grid md:grid-cols-6 gap-4 mt-6">
           <div className="bg-gray-50 p-4 rounded-lg">
             <div className="text-sm font-medium text-gray-600 mb-1">Total</div>
             <div className="text-2xl font-bold text-gray-900">{totalMessages}</div>
@@ -87,17 +93,21 @@ export default async function CampaignDetailPage({
             <div className="text-sm font-medium text-gray-600 mb-1">Queued</div>
             <div className="text-2xl font-bold text-gray-600">{queuedMessages}</div>
           </div>
-          <div className="bg-blue-50 p-4 rounded-lg">
-            <div className="text-sm font-medium text-blue-600 mb-1">Sent</div>
-            <div className="text-2xl font-bold text-blue-600">{sentMessages}</div>
+          <div className="bg-green-50 p-4 rounded-lg">
+            <div className="text-sm font-medium text-green-600 mb-1">Delivered</div>
+            <div className="text-2xl font-bold text-green-600">{deliveredMessages}</div>
           </div>
           <div className="bg-red-50 p-4 rounded-lg">
             <div className="text-sm font-medium text-red-600 mb-1">Failed</div>
             <div className="text-2xl font-bold text-red-600">{failedMessages}</div>
           </div>
-          <div className="bg-green-50 p-4 rounded-lg">
-            <div className="text-sm font-medium text-green-600 mb-1">Cost</div>
-            <div className="text-2xl font-bold text-green-600">
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <div className="text-sm font-medium text-blue-600 mb-1">Success Rate</div>
+            <div className="text-2xl font-bold text-blue-600">{deliveryRate.toFixed(1)}%</div>
+          </div>
+          <div className="bg-purple-50 p-4 rounded-lg">
+            <div className="text-sm font-medium text-purple-600 mb-1">Cost</div>
+            <div className="text-2xl font-bold text-purple-600">
               KES {totalCost.toFixed(2)}
             </div>
           </div>
