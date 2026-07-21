@@ -25,6 +25,7 @@ model Company {
   templates            Template[]
   walletTransactions   WalletTransaction[]
   fallbackRules        FallbackRule[]
+  notifications        Notification[] // ADD THIS LINE
 
   @@index([email])
 }
@@ -71,15 +72,17 @@ model WalletTransaction {
 }
 
 model Contact {
-  id           String   @id @default(uuid())
+  id           String        @id @default(uuid())
   companyId    String
-  company      Company  @relation(fields: [companyId], references: [id])
+  company      Company       @relation(fields: [companyId], references: [id])
   phone        String?
   email        String?
   whatsappId   String?
   customFields Json?
   tags         String[]
-  createdAt    DateTime @default(now())
+  createdAt    DateTime      @default(now())
+  contactLists ContactList[] @relation("ContactListMembers") // NEW: many-to-many with lists
+  messages     Message[] // NEW: back-relation, see Message.contact below
 
   @@index([companyId])
   @@index([phone])
@@ -87,11 +90,13 @@ model Contact {
 }
 
 model ContactList {
-  id        String   @id @default(uuid())
+  id        String     @id @default(uuid())
   companyId String
-  company   Company  @relation(fields: [companyId], references: [id])
+  company   Company    @relation(fields: [companyId], references: [id])
   name      String
-  createdAt DateTime @default(now())
+  createdAt DateTime   @default(now())
+  contacts  Contact[]  @relation("ContactListMembers") // NEW
+  campaigns Campaign[] // NEW: back-relation for contactListId
 
   @@index([companyId])
 }
@@ -110,19 +115,43 @@ model Template {
   @@index([channel])
 }
 
+enum CampaignStatus {
+  draft
+  scheduled
+  sending
+  completed
+  failed
+}
+
+enum AudienceType {
+  all
+  list
+  tags
+  manual
+}
+
 model Campaign {
-  id             String             @id @default(uuid())
-  companyId      String
-  company        Company            @relation(fields: [companyId], references: [id])
-  channel        String
-  name           String
-  templateId     String?
-  status         String
-  scheduledAt    DateTime?
-  fallbackRuleId String?
-  createdAt      DateTime           @default(now())
-  messages       Message[]
-  fallbacks      CampaignFallback[]
+  id               String             @id @default(cuid())
+  companyId        String
+  company          Company            @relation(fields: [companyId], references: [id]) // ADD THIS LINE
+  name             String
+  channel          String
+  templateId       String?
+  message          String
+  subject          String?
+  fallbackRuleId   String?
+  fallbackRule     FallbackRule?      @relation(fields: [fallbackRuleId], references: [id])
+  status           CampaignStatus     @default(draft)
+  scheduledAt      DateTime?
+  audienceType     AudienceType       @default(all)
+  contactListId    String?
+  contactList      ContactList?       @relation(fields: [contactListId], references: [id])
+  audienceTags     String[]           @default([])
+  manualContactIds String[]           @default([])
+  recipientCount   Int?
+  createdAt        DateTime           @default(now())
+  messages         Message[]
+  fallbacks        CampaignFallback[]
 
   @@index([companyId])
   @@index([status])
@@ -133,6 +162,7 @@ model Message {
   campaignId        String
   campaign          Campaign          @relation(fields: [campaignId], references: [id])
   contactId         String
+  contact           Contact           @relation(fields: [contactId], references: [id]) // NEW
   channel           String
   status            String
   providerMessageId String?
@@ -158,46 +188,50 @@ model ProviderWebhookLog {
   @@index([createdAt])
 }
 
-// Add these models to your existing schema.prisma
-
 model FallbackRule {
-  id                String   @id @default(uuid())
-  companyId         String
-  company           Company  @relation(fields: [companyId], references: [id])
-  name              String
-  primaryChannel    String   // sms | email | whatsapp
-  fallbackChannel   String   // sms | email | whatsapp
-  triggerCondition  String   // undelivered | unread | bounced
-  delayMinutes      Int      // Wait time before fallback
-  enabled           Boolean  @default(true)
-  createdAt         DateTime @default(now())
+  id               String     @id @default(uuid())
+  companyId        String
+  company          Company    @relation(fields: [companyId], references: [id])
+  name             String
+  primaryChannel   String
+  fallbackChannel  String
+  triggerCondition String
+  delayMinutes     Int
+  enabled          Boolean    @default(true)
+  createdAt        DateTime   @default(now())
+  campaigns        Campaign[] // NEW: back-relation for Campaign.fallbackRuleId
 
   @@index([companyId])
 }
 
 model CampaignFallback {
-  id              String    @id @default(uuid())
-  campaignId      String
-  campaign        Campaign  @relation(fields: [campaignId], references: [id])
-  messageId       String    @unique
-  message         Message   @relation(fields: [messageId], references: [id])
-  fallbackRuleId  String
-  status          String    // pending | triggered | completed | cancelled
-  triggerAt       DateTime  // When to check and trigger fallback
-  triggeredAt     DateTime?
+  id                String    @id @default(uuid())
+  campaignId        String
+  campaign          Campaign  @relation(fields: [campaignId], references: [id])
+  messageId         String    @unique
+  message           Message   @relation(fields: [messageId], references: [id])
+  fallbackRuleId    String
+  status            String // pending | triggered | completed | cancelled
+  triggerAt         DateTime
+  triggeredAt       DateTime?
   fallbackMessageId String?
-  createdAt       DateTime  @default(now())
+  createdAt         DateTime  @default(now())
 
   @@index([campaignId])
   @@index([status, triggerAt])
 }
 
-// Add to existing Campaign model:
-// fallbackRuleId   String?
-// fallbacks        CampaignFallback[]
+model Notification {
+  id        String   @id @default(uuid())
+  companyId String
+  company   Company  @relation(fields: [companyId], references: [id])
+  type      String // e.g. "fallback_insufficient_balance"
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  metadata  Json?
+  createdAt DateTime @default(now())
 
-// Add to existing Message model:
-// fallback         CampaignFallback?
-
-// Add to existing Company model:
-// fallbackRules    FallbackRule[]
+  @@index([companyId])
+  @@index([companyId, read])
+}
