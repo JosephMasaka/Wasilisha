@@ -55,7 +55,7 @@ export default function WalletCard({ balance, companyId }: WalletCardProps) {
   };
 
   return (
-    <div className="bg-gradient-to-br from-primary-600 to-primary-700 rounded-lg shadow-lg p-6 text-white">
+    <div className="bg-[var(--primary)] rounded-lg shadow-lg p-6 text-white">
       <div className="flex justify-between items-start">
         <div>
           <div className="text-sm font-medium text-primary-100 mb-1">
