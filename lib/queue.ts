@@ -31,5 +31,6 @@ export interface MessageJobData {
   channel: "sms" | "email" | "whatsapp";
   to: string;
   content: string;
+  htmlContent?: string; // NEW: present for email jobs built from a template
   costKes: number;
 }

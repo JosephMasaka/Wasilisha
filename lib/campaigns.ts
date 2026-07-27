@@ -182,6 +182,7 @@ export async function dispatchCampaign(campaignId: string) {
       channel: campaign.channel,
       to,
       content: campaign.message,
+      htmlContent: campaign.channel === "email" ? campaign.htmlContent ?? undefined : undefined, // NEW
       costKes: costPerContact,
       metadata: {
         ...(campaign.channel === "email" && { subject: campaign.subject }),
