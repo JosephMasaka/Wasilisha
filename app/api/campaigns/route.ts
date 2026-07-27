@@ -16,6 +16,7 @@ export async function POST(req: Request) {
       templateId,
       message,
       subject,
+      htmlContent, 
       fallbackRuleId,
       status = "sending",
       scheduledAt,
@@ -48,6 +49,7 @@ export async function POST(req: Request) {
       templateId: templateId || null,
       message,
       subject: channel === "email" ? subject : null,
+      htmlContent: channel === "email" ? htmlContent || null : null, // NEW
       fallbackRuleId: fallbackRuleId || null,
       audienceType,
       contactListId: audienceType === "list" ? contactListId || null : null,
