@@ -31,13 +31,37 @@ export default async function SubscriptionPage() {
     whatsapp: usage.find((u) => u.channel === "whatsapp")?._count || 0,
   };
 
+  // Decimal fields (walletBalance, and the overage rates nested inside
+  // subscriptionPlan) aren't plain serializable objects — Next refuses to
+  // pass them from a Server Component into a Client Component. Convert to
+  // strings before handing off.
+  const serializedCompany = {
+    ...company,
+    walletBalance: company.walletBalance.toString(),
+    subscriptionPlan: company.subscriptionPlan
+      ? {
+          ...company.subscriptionPlan,
+          overageRateSms: company.subscriptionPlan.overageRateSms.toString(),
+          overageRateEmail: company.subscriptionPlan.overageRateEmail.toString(),
+          overageRateWhatsapp: company.subscriptionPlan.overageRateWhatsapp.toString(),
+        }
+      : null,
+  };
+
+  const serializedPlans = plans.map((p) => ({
+    ...p,
+    overageRateSms: p.overageRateSms.toString(),
+    overageRateEmail: p.overageRateEmail.toString(),
+    overageRateWhatsapp: p.overageRateWhatsapp.toString(),
+  }));
+
   return (
     <div className="space-y-8">
       <div>
         <h1 className="font-display text-3xl" style={{ color: "var(--text)" }}>Subscription</h1>
         <p className="mt-1" style={{ color: "var(--text-muted)" }}>Manage your subscription plan and usage</p>
       </div>
-      <SubscriptionManager company={company} plans={plans} usage={usageStats} />
+      <SubscriptionManager company={serializedCompany} plans={serializedPlans} usage={usageStats} />
     </div>
   );
 }
