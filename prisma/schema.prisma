@@ -102,14 +102,20 @@ model ContactList {
 }
 
 model Template {
-  id        String   @id @default(uuid())
-  companyId String
-  company   Company  @relation(fields: [companyId], references: [id])
-  channel   String
-  name      String
-  content   String   @db.Text
-  variables Json?
-  createdAt DateTime @default(now())
+  id             String   @id @default(uuid())
+  companyId      String
+  company        Company  @relation(fields: [companyId], references: [id])
+  channel        String
+  name           String
+  content        String   @db.Text // plain-text body: SMS text, WhatsApp body, email fallback text
+  subject        String? // email subject line
+  htmlContent    String?  @db.Text // compiled email HTML (what actually gets sent)
+  design         Json? // email builder's block structure, so it can be re-opened and edited
+  headerImageUrl String? // WhatsApp header image, or email hero image
+  footerText     String? // WhatsApp footer text
+  variables      Json?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   @@index([companyId])
   @@index([channel])
@@ -133,12 +139,13 @@ enum AudienceType {
 model Campaign {
   id               String             @id @default(cuid())
   companyId        String
-  company          Company            @relation(fields: [companyId], references: [id]) // ADD THIS LINE
+  company          Company            @relation(fields: [companyId], references: [id])
   name             String
   channel          String
   templateId       String?
   message          String
   subject          String?
+  htmlContent      String?            @db.Text // NEW: snapshot of the email template's compiled HTML at send time
   fallbackRuleId   String?
   fallbackRule     FallbackRule?      @relation(fields: [fallbackRuleId], references: [id])
   status           CampaignStatus     @default(draft)
