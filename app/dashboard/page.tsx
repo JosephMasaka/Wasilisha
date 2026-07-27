@@ -76,20 +76,28 @@ export default async function DashboardPage() {
 
     const [contactCount, campaignCount, deliveredCount, channelBreakdown] =
       await prisma.$transaction([
-        prisma.contact.count({ where: { companyId: session.user.companyId } }),
-        prisma.campaign.count({ where: { companyId: session.user.companyId } }),
+        prisma.contact.count({
+          where: { companyId: session.user.companyId },
+        }),
+        prisma.campaign.count({
+          where: { companyId: session.user.companyId },
+        }),
         prisma.message.count({
-          where: { campaign: { companyId: session.user.companyId }, status: "delivered" },
+          where: {
+            campaign: { companyId: session.user.companyId },
+            status: "delivered",
+          },
         }),
         prisma.message.groupBy({
           by: ["channel"],
-          where: { campaign: { companyId: session.user.companyId }, status: "delivered" },
+          where: {
+            campaign: { companyId: session.user.companyId },
+            status: "delivered",
+          },
           _count: { _all: true },
         }),
-      ], {
-        timeout: 10000, // 10 second timeout
-      });
-
+      ]);
+  
     const stats = [
       { label: "Total contacts", value: contactCount, accent: "var(--primary)", href: "/dashboard/contacts" },
       { label: "Campaigns", value: campaignCount, accent: "var(--warm)", href: "/dashboard/campaigns" },
