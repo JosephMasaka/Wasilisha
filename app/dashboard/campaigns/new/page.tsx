@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 interface Template {
@@ -9,6 +9,11 @@ interface Template {
   name: string;
   channel: string;
   content: string;
+  subject?: string | null;
+  htmlContent?: string | null;
+  headerImageUrl?: string | null;
+  footerText?: string | null;
+  variables?: string[] | null;
 }
 
 interface Contact {
@@ -48,6 +53,9 @@ const audienceOptions = [
 
 export default function NewCampaignPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const preselectedTemplateId = searchParams.get("templateId");
+
   const [formData, setFormData] = useState({
     name: "",
     channel: "sms",
@@ -56,6 +64,11 @@ export default function NewCampaignPage() {
     subject: "",
     fallbackRuleId: "",
   });
+
+  // Snapshot of the selected email template's compiled HTML — what actually
+  // gets sent. Not editable here; edit the template itself to change it.
+  const [emailHtmlSnapshot, setEmailHtmlSnapshot] = useState<string | null>(null);
+
   const [audienceType, setAudienceType] = useState<"all" | "list" | "tags" | "manual">("all");
   const [contactListId, setContactListId] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -83,10 +96,18 @@ export default function NewCampaignPage() {
           fetch("/api/automation/rules/list"),
         ]);
 
-        if (templatesRes.ok) setTemplates(await templatesRes.json());
+        const templatesData: Template[] = templatesRes.ok ? await templatesRes.json() : [];
+        setTemplates(templatesData);
         if (contactsRes.ok) setContacts(await contactsRes.json());
         if (listsRes.ok) setContactLists(await listsRes.json());
         if (rulesRes.ok) setFallbackRules(await rulesRes.json());
+
+        // Coming from "Use →" on the templates page: adopt that template's
+        // channel and content immediately, same as picking it manually.
+        if (preselectedTemplateId) {
+          const match = templatesData.find((t) => t.id === preselectedTemplateId);
+          if (match) applyTemplate(match, { channel: match.channel });
+        }
       } catch (err) {
         console.error("Failed to fetch data:", err);
       } finally {
@@ -94,6 +115,7 @@ export default function NewCampaignPage() {
       }
     };
     fetchData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const filteredTemplates = templates.filter((t) => t.channel === formData.channel);
@@ -105,7 +127,6 @@ export default function NewCampaignPage() {
     return Array.from(tagSet).sort();
   }, [contacts]);
 
-  // Channel-eligible first, then narrowed by audience selection
   const channelEligible = contacts.filter((c) => {
     if (formData.channel === "sms") return !!c.phone;
     if (formData.channel === "email") return !!c.email;
@@ -122,8 +143,6 @@ export default function NewCampaignPage() {
     if (audienceType === "manual") {
       return channelEligible.filter((c) => manualIds.includes(c.id));
     }
-    // "list" — actual membership lives server-side; we just show the eligible count
-    // once contactListId is chosen the recipient count comes from the API on submit.
     return contactListId ? channelEligible : [];
   }, [audienceType, channelEligible, selectedTags, manualIds, contactListId]);
 
@@ -139,32 +158,58 @@ export default function NewCampaignPage() {
     );
   });
 
+  // Selecting a template applies its content into the campaign's own editable
+  // fields (SMS/WhatsApp: plain text you can still tweak; email: a locked
+  // HTML snapshot + editable subject). This is the "sync" — the campaign
+  // owns its own copy from this point, independent of later template edits.
+  const applyTemplate = (template: Template | null, opts?: { channel?: string }) => {
+    if (!template) {
+      setFormData((prev) => ({ ...prev, templateId: "" }));
+      setEmailHtmlSnapshot(null);
+      return;
+    }
+    setFormData((prev) => ({
+      ...prev,
+      channel: opts?.channel ?? prev.channel,
+      templateId: template.id,
+      customMessage: template.content,
+      subject: template.subject ?? prev.subject,
+    }));
+    setEmailHtmlSnapshot(template.channel === "email" ? template.htmlContent ?? null : null);
+  };
+
+  const handleTemplateSelect = (templateId: string) => {
+    if (!templateId) {
+      applyTemplate(null);
+      return;
+    }
+    const template = templates.find((t) => t.id === templateId);
+    applyTemplate(template ?? null);
+  };
+
   const channelCosts = { sms: 0.8, email: 0.1, whatsapp: 0.5 };
   let costPerMessage = channelCosts[formData.channel as keyof typeof channelCosts];
   if (formData.channel === "sms") {
-    const message = formData.templateId && selectedTemplate ? selectedTemplate.content : formData.customMessage;
-    costPerMessage = channelCosts.sms * Math.ceil(message.length / 160);
+    costPerMessage = channelCosts.sms * Math.ceil(formData.customMessage.length / 160);
   }
   const totalCost = recipientCount * costPerMessage;
   const activeChannel = channelOptions.find((c) => c.value === formData.channel)!;
 
-  const buildPayload = (status: "draft" | "scheduled" | "sending", scheduledAtIso: string | null) => {
-    const message = formData.templateId && selectedTemplate ? selectedTemplate.content : formData.customMessage;
-    return {
-      name: formData.name,
-      channel: formData.channel,
-      templateId: formData.templateId || null,
-      message,
-      subject: formData.channel === "email" ? formData.subject : undefined,
-      fallbackRuleId: formData.fallbackRuleId || null,
-      status,
-      scheduledAt: scheduledAtIso,
-      audienceType,
-      contactListId: audienceType === "list" ? contactListId : null,
-      audienceTags: audienceType === "tags" ? selectedTags : [],
-      manualContactIds: audienceType === "manual" ? manualIds : [],
-    };
-  };
+  const buildPayload = (status: "draft" | "scheduled" | "sending", scheduledAtIso: string | null) => ({
+    name: formData.name,
+    channel: formData.channel,
+    templateId: formData.templateId || null,
+    message: formData.customMessage,
+    subject: formData.channel === "email" ? formData.subject : undefined,
+    htmlContent: formData.channel === "email" ? emailHtmlSnapshot : undefined,
+    fallbackRuleId: formData.fallbackRuleId || null,
+    status,
+    scheduledAt: scheduledAtIso,
+    audienceType,
+    contactListId: audienceType === "list" ? contactListId : null,
+    audienceTags: audienceType === "tags" ? selectedTags : [],
+    manualContactIds: audienceType === "manual" ? manualIds : [],
+  });
 
   const submitCampaign = async (action: "draft" | "schedule" | "send") => {
     setError("");
@@ -173,9 +218,12 @@ export default function NewCampaignPage() {
       setError("Give this campaign a name");
       return;
     }
-    const message = formData.templateId && selectedTemplate ? selectedTemplate.content : formData.customMessage;
-    if (!message) {
+    if (!formData.customMessage && !emailHtmlSnapshot) {
       setError("Please select a template or enter a custom message");
+      return;
+    }
+    if (formData.channel === "email" && !formData.subject) {
+      setError("Email campaigns need a subject line");
       return;
     }
     if (action === "send" && recipientCount === 0 && audienceType !== "list") {
@@ -269,7 +317,10 @@ export default function NewCampaignPage() {
                   <button
                     key={c.value}
                     type="button"
-                    onClick={() => setFormData({ ...formData, channel: c.value, templateId: "" })}
+                    onClick={() => {
+                      setFormData({ ...formData, channel: c.value, templateId: "", customMessage: "" });
+                      setEmailHtmlSnapshot(null);
+                    }}
                     className="rounded-xl border p-4 text-left transition"
                     style={{ background: active ? "var(--surface-2)" : "transparent", borderColor: active ? c.color : "var(--border)", boxShadow: active ? `0 0 0 1px ${c.color}` : "none" }}
                   >
@@ -281,6 +332,26 @@ export default function NewCampaignPage() {
               })}
             </div>
           </div>
+
+          {/* Template picker */}
+          {filteredTemplates.length > 0 ? (
+            <div>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-muted)" }}>Start from a template (optional)</label>
+              <select
+                value={formData.templateId}
+                onChange={(e) => handleTemplateSelect(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-lg border text-sm outline-none focus:border-[var(--primary)] transition"
+                style={inputStyle}
+              >
+                <option value="">— Write from scratch —</option>
+                {filteredTemplates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+              </select>
+            </div>
+          ) : (
+            <p className="text-xs" style={{ color: "var(--text-faint)" }}>
+              No {activeChannel.label} templates yet — <Link href="/dashboard/templates/new" className="underline" style={{ color: "var(--primary)" }}>create one</Link>, or write a custom message below.
+            </p>
+          )}
 
           {formData.channel === "email" && (
             <div>
@@ -296,41 +367,48 @@ export default function NewCampaignPage() {
             </div>
           )}
 
-          {filteredTemplates.length > 0 && (
+          {/* Email with template selected: locked HTML preview, no inline editing */}
+          {formData.channel === "email" && selectedTemplate && emailHtmlSnapshot && (
             <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-muted)" }}>Select template (optional)</label>
-              <select
-                value={formData.templateId}
-                onChange={(e) => setFormData({ ...formData, templateId: e.target.value })}
-                className="w-full px-4 py-2.5 rounded-lg border text-sm outline-none focus:border-[var(--primary)] transition"
-                style={inputStyle}
-              >
-                <option value="">— Use custom message —</option>
-                {filteredTemplates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
-              {selectedTemplate && (
-                <div className="mt-2 p-3 rounded-lg border text-sm font-mono" style={{ background: "var(--surface-2)", borderColor: "var(--border)", color: "var(--text-muted)" }}>
-                  {selectedTemplate.content}
-                </div>
-              )}
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-medium" style={{ color: "var(--text-muted)" }}>Email content</label>
+                <Link href="/dashboard/templates" className="text-xs hover:underline" style={{ color: "var(--primary)" }}>
+                  Edit the template →
+                </Link>
+              </div>
+              <p className="text-xs mb-2" style={{ color: "var(--text-faint)" }}>
+                This campaign uses a snapshot of the template as it was when selected — editing the template later won&apos;t change this campaign.
+              </p>
+              <div className="rounded-xl border overflow-hidden" style={{ borderColor: "var(--border)" }}>
+                <iframe title="Email preview" srcDoc={emailHtmlSnapshot} className="w-full" style={{ height: 360, background: "white", border: "none" }} />
+              </div>
             </div>
           )}
 
-          {!formData.templateId && (
+          {/* Custom / plain-text message — hidden for email-with-template, shown otherwise */}
+          {!(formData.channel === "email" && selectedTemplate && emailHtmlSnapshot) && (
             <div>
-              <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-muted)" }}>Message content *</label>
+              <label className="block text-xs font-medium mb-1.5" style={{ color: "var(--text-muted)" }}>
+                {formData.channel === "email" ? "Email content (plain text) *" : "Message content *"}
+              </label>
               <textarea
                 value={formData.customMessage}
                 onChange={(e) => setFormData({ ...formData, customMessage: e.target.value })}
                 rows={formData.channel === "email" ? 8 : 5}
                 className="w-full px-4 py-2.5 rounded-lg border text-sm outline-none focus:border-[var(--primary)] transition font-mono"
                 style={inputStyle}
-                placeholder={formData.channel === "email" ? "Enter email content (HTML supported)…" : "Enter your message here…"}
+                placeholder={formData.channel === "email" ? "Plain-text email body…" : "Enter your message here…"}
               />
               <p className="text-xs mt-1.5" style={{ color: "var(--text-faint)" }}>
                 {formData.customMessage.length} characters
                 {formData.channel === "sms" && ` (${Math.ceil(formData.customMessage.length / 160)} SMS)`}
               </p>
+              {formData.channel === "email" && (
+                <p className="text-xs mt-1" style={{ color: "var(--text-faint)" }}>
+                  For designed emails with images and buttons,{" "}
+                  <Link href="/dashboard/templates/new" className="underline" style={{ color: "var(--primary)" }}>build a template</Link> instead.
+                </p>
+              )}
             </div>
           )}
 
@@ -483,6 +561,9 @@ export default function NewCampaignPage() {
             </h3>
             <div className="space-y-2.5 text-sm">
               <div className="flex justify-between"><span style={{ color: "var(--text-faint)" }}>Channel</span><span style={{ color: "var(--text)" }}>{activeChannel.label}</span></div>
+              {selectedTemplate && (
+                <div className="flex justify-between"><span style={{ color: "var(--text-faint)" }}>Template</span><span style={{ color: "var(--text)" }}>{selectedTemplate.name}</span></div>
+              )}
               <div className="flex justify-between">
                 <span style={{ color: "var(--text-faint)" }}>Recipients</span>
                 <span style={{ color: "var(--text)" }}>
