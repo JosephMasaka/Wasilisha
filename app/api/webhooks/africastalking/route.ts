@@ -6,11 +6,17 @@ export async function POST(req: Request) {
     const formData = await req.formData();
     const id = formData.get("id")?.toString();
     const status = formData.get("status")?.toString();
+    const rawPayload = Object.fromEntries(
+      Array.from(formData.entries()).map(([key, value]) => [
+        key,
+        value.toString(),
+      ])
+    );
 
     await prisma.providerWebhookLog.create({
       data: {
         source: "africastalking",
-        rawPayload: Object.fromEntries(formData),
+        rawPayload,
       },
     });
 
