@@ -94,7 +94,12 @@ export default async function DashboardPage() {
             campaign: { companyId: session.user.companyId },
             status: "delivered",
           },
-          _count: { _all: true },
+          orderBy: {
+            channel: "asc",
+          },
+          _count: {
+            _all: true,
+          },
         }),
       ]);
   
