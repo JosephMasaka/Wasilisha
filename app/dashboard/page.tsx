@@ -88,21 +88,17 @@ export default async function DashboardPage() {
             status: "delivered",
           },
         }),
-        prisma.message.groupBy({
-          by: ["channel"],
+        prisma.message.findMany({
           where: {
             campaign: { companyId: session.user.companyId },
             status: "delivered",
           },
-          orderBy: {
-            channel: "asc",
-          },
-          _count: {
-            _all: true,
+          select: {
+            channel: true,
           },
         }),
       ]);
-  
+
     const stats = [
       { label: "Total contacts", value: contactCount, accent: "var(--primary)", href: "/dashboard/contacts" },
       { label: "Campaigns", value: campaignCount, accent: "var(--warm)", href: "/dashboard/campaigns" },
@@ -118,7 +114,15 @@ export default async function DashboardPage() {
     const balance = Number(company.walletBalance);
     const isLowBalance = balance < LOW_BALANCE_THRESHOLD;
 
-    const totalDelivered = channelBreakdown.reduce((sum, c) => sum + c._count._all, 0);
+    const grouped = channelBreakdown.reduce<Record<string, number>>((acc, msg) => {
+      acc[msg.channel] = (acc[msg.channel] ?? 0) + 1;
+      return acc;
+    }, {});
+
+    const totalDelivered = Object.values(grouped).reduce(
+      (sum, count) => sum + count,
+      0
+    );
 
     return (
     <div className="space-y-8">
@@ -206,27 +210,31 @@ export default async function DashboardPage() {
             Delivered by channel
           </h2>
           <div className="flex h-2 w-full rounded-full overflow-hidden mb-4" style={{ background: "var(--surface-2)" }}>
-            {channelBreakdown.map((c) => (
+            {Object.entries(grouped).map(([channel, count]) => (
               <div
-                key={c.channel}
+                key={channel}
                 style={{
-                  width: `${(c._count._all / totalDelivered) * 100}%`,
-                  background: channelMeta[c.channel]?.color ?? "var(--text-faint)",
+                  width: `${(count / totalDelivered) * 100}%`,
+                  background: channelMeta[channel]?.color ?? "var(--text-faint)",
                 }}
               />
             ))}
           </div>
           <div className="flex flex-wrap gap-5">
-            {channelBreakdown.map((c) => (
-              <div key={c.channel} className="flex items-center gap-2 text-sm">
+            {Object.entries(grouped).map(([channel, count]) => (
+              <div key={channel} className="flex items-center gap-2 text-sm">
                 <span
                   className="w-2 h-2 rounded-full"
-                  style={{ background: channelMeta[c.channel]?.color ?? "var(--text-faint)" }}
+                  style={{
+                    background: channelMeta[channel]?.color ?? "var(--text-faint)",
+                  }}
                 />
                 <span style={{ color: "var(--text-muted)" }}>
-                  {channelMeta[c.channel]?.label ?? c.channel}
+                  {channelMeta[channel]?.label ?? channel}
                 </span>
-                <span style={{ color: "var(--text)" }}>{c._count._all.toLocaleString()}</span>
+                <span style={{ color: "var(--text)" }}>
+                  {count.toLocaleString()}
+                </span>
               </div>
             ))}
           </div>
