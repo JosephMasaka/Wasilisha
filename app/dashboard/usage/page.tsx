@@ -5,102 +5,83 @@ import UsageDashboard from "@/components/usage/UsageDashboard";
 
 export default async function UsagePage() {
   const session = await auth();
-
-  if (!session) {
-    redirect("/auth/signin");
-  }
+  if (!session) redirect("/auth/signin");
 
   const company = await prisma.company.findUnique({
     where: { id: session.user.companyId },
     include: { subscriptionPlan: true },
   });
+  if (!company) redirect("/auth/signin");
 
-  if (!company) {
-    redirect("/auth/signin");
-  }
-
-  // Get current month usage
   const startOfMonth = new Date(new Date().setDate(1));
   startOfMonth.setHours(0, 0, 0, 0);
 
   const [currentMonthUsage, campaigns, recentTransactions] = await Promise.all([
     prisma.message.groupBy({
       by: ["channel", "status"],
-      where: {
-        campaign: {
-          companyId: session.user.companyId,
-        },
-        createdAt: {
-          gte: startOfMonth,
-        },
-      },
+      where: { campaign: { companyId: session.user.companyId }, createdAt: { gte: startOfMonth } },
       _count: true,
-      _sum: {
-        costKes: true,
-      },
+      _sum: { costKes: true },
     }),
     prisma.campaign.findMany({
-      where: {
-        companyId: session.user.companyId,
-        createdAt: {
-          gte: startOfMonth,
-        },
-      },
-      include: {
-        messages: true,
-      },
+      where: { companyId: session.user.companyId, createdAt: { gte: startOfMonth } },
+      include: { messages: true },
       orderBy: { createdAt: "desc" },
     }),
     prisma.walletTransaction.findMany({
-      where: {
-        companyId: session.user.companyId,
-      },
+      where: { companyId: session.user.companyId },
       orderBy: { createdAt: "desc" },
       take: 10,
     }),
   ]);
 
-  // Organize usage by channel
   const usage = {
-    sms: {
-      total: 0,
-      delivered: 0,
-      failed: 0,
-      cost: 0,
-    },
-    email: {
-      total: 0,
-      delivered: 0,
-      failed: 0,
-      cost: 0,
-    },
-    whatsapp: {
-      total: 0,
-      delivered: 0,
-      failed: 0,
-      cost: 0,
-    },
+    sms: { total: 0, delivered: 0, failed: 0, cost: 0 },
+    email: { total: 0, delivered: 0, failed: 0, cost: 0 },
+    whatsapp: { total: 0, delivered: 0, failed: 0, cost: 0 },
   };
 
   currentMonthUsage.forEach((item) => {
     const channel = item.channel as "sms" | "email" | "whatsapp";
     if (usage[channel]) {
       usage[channel].total += item._count;
-      if (item.status === "delivered") {
-        usage[channel].delivered += item._count;
-      } else if (item.status === "failed") {
-        usage[channel].failed += item._count;
-      }
+      if (item.status === "delivered") usage[channel].delivered += item._count;
+      else if (item.status === "failed") usage[channel].failed += item._count;
       usage[channel].cost += parseFloat(item._sum.costKes?.toString() || "0");
     }
   });
 
+  // Decimal fields aren't plain serializable — convert to strings/numbers
+  // before handing off to the client component.
+  const serializedCompany = {
+    ...company,
+    walletBalance: company.walletBalance.toString(),
+    subscriptionPlan: company.subscriptionPlan
+      ? {
+          ...company.subscriptionPlan,
+          overageRateSms: company.subscriptionPlan.overageRateSms.toString(),
+          overageRateEmail: company.subscriptionPlan.overageRateEmail.toString(),
+          overageRateWhatsapp: company.subscriptionPlan.overageRateWhatsapp.toString(),
+        }
+      : null,
+  };
+
+  const serializedCampaigns = campaigns.map((c) => ({
+    ...c,
+    messages: c.messages.map((m) => ({ ...m, costKes: m.costKes.toString() })),
+  }));
+
+  const serializedTransactions = recentTransactions.map((t) => ({
+    ...t,
+    amountKes: t.amountKes.toString(),
+  }));
+
   return (
     <UsageDashboard
-      company={company}
+      company={serializedCompany}
       usage={usage}
-      campaigns={campaigns}
-      transactions={recentTransactions}
+      campaigns={serializedCampaigns}
+      transactions={serializedTransactions}
     />
   );
 }
