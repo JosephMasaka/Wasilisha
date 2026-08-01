@@ -1,10 +1,10 @@
 "use client";
 
-import { SubscriptionPlan } from "@prisma/client";
+import type { SerializedPlan } from "./SubscriptionManager";
 
 interface PlanCardProps {
-  plan: SubscriptionPlan;
-  currentPlan: SubscriptionPlan | null;
+  plan: SerializedPlan;
+  currentPlan: SerializedPlan | null;
   onSelect: () => void;
   loading: boolean;
 }

@@ -5,7 +5,7 @@ import { useState } from "react";
 import PlanCard from "./PlanCard";
 import UsageDisplay from "./UsageDisplay";
 
-type SerializedPlan = Omit<SubscriptionPlan, "overageRateSms" | "overageRateEmail" | "overageRateWhatsapp"> & {
+export type SerializedPlan = Omit<SubscriptionPlan, "overageRateSms" | "overageRateEmail" | "overageRateWhatsapp"> & {
   overageRateSms: string;
   overageRateEmail: string;
   overageRateWhatsapp: string;
