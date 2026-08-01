@@ -151,7 +151,7 @@ export default function AnalyticsDashboard({ campaigns, dailyStats }: AnalyticsD
                 <Tooltip
                   contentStyle={{ background: "#171325", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 8, fontSize: 12 }}
                   labelStyle={{ color: "#f5f3fa" }}
-                  labelFormatter={(d) => new Date(d).toLocaleDateString()}
+                  labelFormatter={(d) => (typeof d === "string" ? new Date(d).toLocaleDateString() : "")}
                 />
                 <Legend wrapperStyle={{ fontSize: 12, color: "#a29cc4" }} />
                 <Line type="monotone" dataKey="sms" name="SMS" stroke={channelMeta.sms.hex} strokeWidth={2} dot={false} />
