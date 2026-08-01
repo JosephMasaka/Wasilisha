@@ -3,41 +3,29 @@ import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import AnalyticsDashboard from "@/components/analytics/AnalyticsDashboard";
 
+type DailyStatRow = {
+  date: Date;
+  channel: string;
+  total: bigint;
+  delivered: bigint;
+  failed: bigint;
+  cost: number;
+};
+
 export default async function AnalyticsPage() {
   const session = await auth();
+  if (!session) redirect("/auth/signin");
 
-  if (!session) {
-    redirect("/auth/signin");
-  }
-
-  // Get campaigns from last 30 days
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
   const campaigns = await prisma.campaign.findMany({
-    where: {
-      companyId: session.user.companyId,
-      createdAt: {
-        gte: thirtyDaysAgo,
-      },
-    },
-    include: {
-      messages: true,
-    },
+    where: { companyId: session.user.companyId, createdAt: { gte: thirtyDaysAgo } },
+    include: { messages: true },
     orderBy: { createdAt: "desc" },
   });
 
-  // Get daily stats for charts
-  const dailyStats = await prisma.$queryRaw<
-    Array<{
-      date: Date;
-      channel: string;
-      total: bigint;
-      delivered: bigint;
-      failed: bigint;
-      cost: number;
-    }>
-  >`
+  const dailyStats = await prisma.$queryRaw<DailyStatRow[]>`
     SELECT
       DATE("createdAt") as date,
       channel,
@@ -54,11 +42,16 @@ export default async function AnalyticsPage() {
     ORDER BY date DESC
   `;
 
+  const serializedCampaigns = campaigns.map((c) => ({
+    ...c,
+    messages: c.messages.map((m) => ({ ...m, costKes: m.costKes.toString() })),
+  }));
+
   return (
     <AnalyticsDashboard
-      campaigns={campaigns}
+      campaigns={serializedCampaigns}
       dailyStats={dailyStats.map((stat) => ({
-        date: stat.date,
+        date: stat.date.toISOString(),
         channel: stat.channel,
         total: Number(stat.total),
         delivered: Number(stat.delivered),
