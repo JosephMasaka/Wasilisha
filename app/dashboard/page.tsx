@@ -16,6 +16,11 @@ const channelMeta: Record<string, { color: string; label: string }> = {
   whatsapp: { color: "var(--whatsapp)", label: "WhatsApp" },
 };
 
+function getChannelMeta(channel: string | null) {
+  if (!channel) return null;
+  return channelMeta[channel] ?? null;
+}
+
 const LOW_BALANCE_THRESHOLD = 500;
 
 function timeAgo(date: Date) {
@@ -30,7 +35,7 @@ function timeAgo(date: Date) {
   return date.toLocaleDateString();
 }
 
-function TxIcon({ isTopup, channel }: { isTopup: boolean; channel?: string }) {
+function TxIcon({ isTopup, channel }: { isTopup: boolean; channel?: string | null }) {
   if (isTopup) {
     return (
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -279,14 +284,16 @@ export default async function DashboardPage() {
                         className="w-8 h-8 rounded-full flex items-center justify-center shrink-0"
                         style={{
                           background: "var(--surface-2)",
-                          color: isTopup ? "var(--whatsapp)" : channelMeta[tx.channel]?.color ?? "var(--text-muted)",
+                          color: isTopup
+                            ? "var(--whatsapp)"
+                            : getChannelMeta(tx.channel)?.color ?? "var(--text-muted)",
                         }}
                       >
                         <TxIcon isTopup={isTopup} channel={tx.channel} />
                       </div>
                       <div>
                         <div className="font-medium text-sm" style={{ color: "var(--text)" }}>
-                          {isTopup ? "Wallet top-up" : `${channelMeta[tx.channel]?.label ?? tx.channel} message`}
+                          {isTopup ? "Wallet top-up" : `${getChannelMeta(tx.channel)?.label ?? tx.channel} message`}
                         </div>
                         <div className="text-xs mt-0.5" style={{ color: "var(--text-faint)" }}>
                           {timeAgo(new Date(tx.createdAt))}
@@ -302,7 +309,11 @@ export default async function DashboardPage() {
                       </span>
                       <span
                         className="font-semibold text-sm"
-                        style={{ color: isTopup ? "var(--whatsapp)" : "var(--text)" }}
+                        style={{ 
+                          color: isTopup
+                            ? "var(--whatsapp)"
+                            : getChannelMeta(tx.channel)?.color ?? "var(--text-muted)",
+                        }}
                       >
                         {isTopup ? "+" : "-"}KES {tx.amountKes.toString()}
                       </span>
