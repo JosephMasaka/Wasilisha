@@ -1,8 +1,10 @@
+import { isRedirectError } from "next/dist/client/components/redirect-error";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import WalletCard from "@/components/WalletCard";
+
 
 const statusColor: Record<string, string> = {
   success: "var(--whatsapp)",
@@ -65,11 +67,12 @@ function TxIcon({ isTopup, channel }: { isTopup: boolean; channel?: string | nul
 }
 
 export default async function DashboardPage() {
+  const session = await auth();
+  if (!session?.user?.companyId) {
+    redirect("/auth/signin");
+  }
+
   try {
-    const session = await auth();
-    if (!session?.user?.companyId) {
-      redirect("/auth/signin");
-    }
 
     const company = await prisma.company.findUnique({
       where: { id: session.user.companyId },
