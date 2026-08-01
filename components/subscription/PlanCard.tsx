@@ -6,13 +6,14 @@ interface PlanCardProps {
   plan: SerializedPlan;
   currentPlan: SerializedPlan | null;
   onSelect: () => void;
-  loading: boolean;
+  isLoading: boolean;
+  disabled?: boolean;
+  changeDirection?: "upgrade" | "downgrade" | null;
 }
 
-export default function PlanCard({ plan, currentPlan, onSelect, loading }: PlanCardProps) {
+export default function PlanCard({ plan, currentPlan, onSelect, isLoading, disabled, changeDirection }: PlanCardProps) {
   const isCurrentPlan = currentPlan?.id === plan.id;
   const isPopular = plan.name === "Growth";
-
   return (
     <div
       className="relative rounded-2xl border p-6"
@@ -38,7 +39,17 @@ export default function PlanCard({ plan, currentPlan, onSelect, loading }: PlanC
           Current
         </span>
       )}
-
+      {!isCurrentPlan && changeDirection && (
+        <span
+          className="absolute top-4 right-4 text-xs font-medium px-2.5 py-1 rounded-full"
+          style={{
+            background: changeDirection === "upgrade" ? "rgba(139,92,246,0.12)" : "var(--surface-2)",
+            color: changeDirection === "upgrade" ? "var(--primary)" : "var(--text-faint)",
+          }}
+        >
+          {changeDirection === "upgrade" ? "Upgrade" : "Downgrade"}
+        </span>
+      )}
       <div className="text-center mb-6">
         <h3 className="font-display text-xl mb-2" style={{ color: "var(--text)" }}>{plan.name}</h3>
         <div className="flex items-baseline justify-center">
@@ -46,7 +57,6 @@ export default function PlanCard({ plan, currentPlan, onSelect, loading }: PlanC
           <span className="ml-1.5 text-sm" style={{ color: "var(--text-faint)" }}>/mo</span>
         </div>
       </div>
-
       <div className="space-y-2.5 mb-6">
         {[
           { label: "SMS credits", value: plan.includedSmsCredits, color: "var(--sms)" },
@@ -62,19 +72,17 @@ export default function PlanCard({ plan, currentPlan, onSelect, loading }: PlanC
           </div>
         ))}
       </div>
-
       <div className="pt-4 mb-6 border-t" style={{ borderColor: "var(--border)" }}>
         <p className="text-xs mb-2" style={{ color: "var(--text-faint)" }}>Overage rates</p>
         <div className="space-y-1 text-xs" style={{ color: "var(--text-muted)" }}>
-          <div className="flex justify-between"><span>SMS</span><span>KES {plan.overageRateSms.toString()}</span></div>
-          <div className="flex justify-between"><span>Email</span><span>KES {plan.overageRateEmail.toString()}</span></div>
-          <div className="flex justify-between"><span>WhatsApp</span><span>KES {plan.overageRateWhatsapp.toString()}</span></div>
+          <div className="flex justify-between"><span>SMS</span><span>KES {plan.overageRateSms}</span></div>
+          <div className="flex justify-between"><span>Email</span><span>KES {plan.overageRateEmail}</span></div>
+          <div className="flex justify-between"><span>WhatsApp</span><span>KES {plan.overageRateWhatsapp}</span></div>
         </div>
       </div>
-
       <button
         onClick={onSelect}
-        disabled={loading || isCurrentPlan}
+        disabled={isLoading || isCurrentPlan || disabled}
         className="w-full py-3 rounded-lg font-medium text-sm transition hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
         style={
           isCurrentPlan
@@ -82,7 +90,7 @@ export default function PlanCard({ plan, currentPlan, onSelect, loading }: PlanC
             : { background: "linear-gradient(135deg, var(--warm), var(--primary))", color: "white" }
         }
       >
-        {isCurrentPlan ? "Current plan" : currentPlan ? "Switch to this plan" : "Select plan"}
+        {isLoading ? "Loading…" : isCurrentPlan ? "Current plan" : currentPlan ? "Switch to this plan" : "Select plan"}
       </button>
     </div>
   );
